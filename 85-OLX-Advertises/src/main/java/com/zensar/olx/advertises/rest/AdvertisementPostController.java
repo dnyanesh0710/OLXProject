@@ -212,4 +212,9 @@ public class AdvertisementPostController {
 		return response;
 	}
 	
+	@DeleteMapping("/user/advertise/{advertiseId}")
+	public boolean deleteAdvertisement(@PathVariable(name="advertiseId") int id) {
+		return this.service.deleteAdvertisementPost(new AdvertisementPost(id));
+	}
+	
 }

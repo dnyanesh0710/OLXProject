@@ -28,7 +28,7 @@ public class AdvertisementPostService {
 	}
 	
 	public boolean deleteAdvertisementPost(AdvertisementPost post) {
-		boolean result=false;
+		boolean result=true;
 		try {
 			this.dao.delete(post);
 		}catch (Exception e) {
