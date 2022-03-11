@@ -1,5 +1,6 @@
 package com.zensar.olx.advertises.rest;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import com.zensar.olx.advertises.bean.AdvertisementPost;
 import com.zensar.olx.advertises.bean.AdvertisementStatus;
 import com.zensar.olx.advertises.bean.Category;
+import com.zensar.olx.advertises.bean.FilterCriteriaRequest;
 import com.zensar.olx.advertises.bean.NewAdvertisementPostRequest;
 import com.zensar.olx.advertises.bean.NewAdvertisementPostResponse;
 import com.zensar.olx.advertises.bean.OLXUser;
@@ -25,6 +27,8 @@ import com.zensar.olx.advertises.comparators.CategoryComparator;
 import com.zensar.olx.advertises.comparators.CreatedDateComparator;
 import com.zensar.olx.advertises.comparators.ModifiedDateComparator;
 import com.zensar.olx.advertises.service.AdvertisementPostService;
+
+import net.bytebuddy.asm.Advice.Local;
 
 @RestController
 public class AdvertisementPostController {
@@ -198,7 +202,11 @@ public class AdvertisementPostController {
 
 	// 13th URL
 	@GetMapping("/advertise/search/{filter}")
-	public List<NewAdvertisementPostResponse> filterAdvertisements(@PathVariable(name = "filter") String filter) {
+	public List<NewAdvertisementPostResponse> filterAdvertisements(@RequestBody FilterCriteriaRequest criteriaRequest) {
+		
+		LocalDate dateFrom=criteriaRequest.getFromDate();
+		LocalDate dateTo=criteriaRequest.getToDate();
+		
 		List<AdvertisementPost> allAdvertisementPosts = this.service.getAllAdvertisments();
 		List<NewAdvertisementPostResponse> responseList = new LinkedList<>();
 
@@ -231,22 +239,58 @@ public class AdvertisementPostController {
 			responseList.add(response);
 		}
 
-		switch (filter) {
-		case "category":
-			responseList.sort(new CategoryComparator());
-			break;
-		case "createdDate":
-			responseList.sort(new CreatedDateComparator());
-			break;
-		case "modifiedDate":
-			responseList.sort(new ModifiedDateComparator());
-			break;
-		case "startIndex":
-			responseList.sort(new AdvertisementIdComparator());
-			break;
+		return responseList;
+	}
+	
+	//14th URL
+	@GetMapping("/advertise/{search}")
+	public List<NewAdvertisementPostResponse> f7(@PathVariable(name="search") String searchText){
+		List<AdvertisementPost> allPosts=this.service.getAllAdvertisments();
+		RestTemplate restTemplate = new RestTemplate();
+		for(AdvertisementPost post:allPosts) {
 
-		default:
-			break;
+			int categoryId = post.getCategory().getId();
+			Category category = new Category();
+			String url = "http://localhost:9052/advertise/getCategory/" + categoryId;
+			category = restTemplate.getForObject(url, Category.class);
+			post.setCategory(category);
+
+			url = "http://localhost:9051/user/" + post.getOlxUser().getOlxUserId();
+			OLXUser olxUser = restTemplate.getForObject(url, OLXUser.class);
+			post.setOlxUser(olxUser);
+
+			url = "http://localhost:9052/advertise/status/" + post.getAdvertisementStatus().getId();
+			AdvertisementStatus advertisementStatus = restTemplate.getForObject(url, AdvertisementStatus.class);
+			post.setAdvertisementStatus(advertisementStatus);
+		}
+		
+		List<AdvertisementPost> filteredPosts=new ArrayList<>();
+		for(AdvertisementPost post:allPosts) {
+			if(post.getCategory().getName().toLowerCase().contains(searchText.toLowerCase()))
+				filteredPosts.add(post);
+			else if(post.getTitle().toLowerCase().contains(searchText.toLowerCase()))
+				filteredPosts.add(post);
+			else if(post.getDescription().toLowerCase().contains(searchText.toLowerCase()))
+				filteredPosts.add(post);
+			else if(post.getAdvertisementStatus().getStatus().toLowerCase().contains(searchText.toLowerCase()))
+				filteredPosts.add(post);
+		}
+		
+		List<NewAdvertisementPostResponse> responseList=new ArrayList<>();
+		for(AdvertisementPost post:filteredPosts) {
+			NewAdvertisementPostResponse response = new NewAdvertisementPostResponse();
+
+			response.setCategory(post.getCategory().getName());
+			response.setDescription(post.getCategory().getDescription());
+			response.setId(post.getId());
+			response.setTitle(post.getTitle());
+			response.setPrice(post.getPrice());
+			response.setCreatedDate(post.getCreatedDate());
+			response.setModifiedDate(post.getModifiedDate());
+			response.setUserName(post.getOlxUser().getUserName());
+			response.setStatus(post.getAdvertisementStatus().getStatus());
+
+			responseList.add(response);
 		}
 		return responseList;
 	}
