@@ -200,7 +200,7 @@ public class AdvertisementPostController {
 		return this.service.deleteAdvertisementPost(new AdvertisementPost(id));
 	}
 
-	// 13th URL
+	// 13th URL (just done sorting).
 	@GetMapping("/advertise/search/{filter}")
 	public List<NewAdvertisementPostResponse> filterAdvertisements(@RequestBody FilterCriteriaRequest criteriaRequest) {
 		
@@ -295,4 +295,47 @@ public class AdvertisementPostController {
 		return responseList;
 	}
 
+	//15th URL
+	@GetMapping("advertise/{advertiseId}/{userName}")
+	public NewAdvertisementPostResponse getAdvertisement(@PathVariable(name = "advertiseId") int id,
+	@PathVariable(name = "userName") String userName) {
+
+	AdvertisementPost advertisementPost = this.service.getAdvertisementPostById(id);
+
+	String url = null;
+	RestTemplate restTemplate = new RestTemplate();
+
+	// url = "http://localhost:9051/user/" + advertisementPost.getOlxUser().getId();
+	// OLXUser user = restTemplate.getForObject(url, OLXUser.class);
+
+	NewAdvertisementPostResponse response = new NewAdvertisementPostResponse();
+
+	response.setId(advertisementPost.getId());
+	response.setTitle(advertisementPost.getTitle());
+	response.setDescription(advertisementPost.getDescription());
+	response.setPrice(advertisementPost.getPrice());
+
+	url = "http://localhost:9051/user/find/" + userName;
+	OLXUser olxUser = restTemplate.getForObject(url, OLXUser.class);
+	advertisementPost.setOlxUser(olxUser);
+	response.setUserName(advertisementPost.getOlxUser().getUserName());
+
+	Category category;
+	url = "http://localhost:9052/advertise/status/" + advertisementPost.getCategory().getId();
+	category = restTemplate.getForObject(url, Category.class);
+	advertisementPost.setCategory(category);
+	response.setCategory(advertisementPost.getCategory().getName());
+
+	response.setCreatedDate(advertisementPost.getCreatedDate());
+	response.setModifiedDate(advertisementPost.getModifiedDate());
+
+	url = "http://localhost:9052/advertisementStatus/getStatus/"
+	+ advertisementPost.getAdvertisementStatus().getId();
+	AdvertisementStatus advertisementStatus;
+	advertisementStatus = restTemplate.getForObject(url, AdvertisementStatus.class);
+	advertisementPost.setAdvertisementStatus(advertisementStatus);
+	response.setStatus(advertisementPost.getAdvertisementStatus().getStatus());
+
+	return response;
+	}
 }
